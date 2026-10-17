@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+  web:
+    build: ./backend
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - FLASK_ENV=development
+    # For demo we use SQLite; in production replace with Postgres service

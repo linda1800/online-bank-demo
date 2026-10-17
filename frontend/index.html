@@ -1,0 +1,153 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Online Bank Demo</title>
+    <style>
+      body { font-family: Arial, sans-serif; max-width: 900px; margin: 2rem auto; }
+      input, button { padding: .5rem; margin: .25rem 0; }
+      .section { border: 1px solid #ddd; padding: 1rem; margin-bottom: 1rem; }
+      pre { background: #f6f6f6; padding: .5rem }
+    </style>
+  </head>
+  <body>
+    <h1>Online Bank Demo</h1>
+    <div id="status"></div>
+
+    <div class="section">
+      <h2>Register</h2>
+      <input id="reg_username" placeholder="username" /> <br />
+      <input id="reg_password" type="password" placeholder="password" /> <br />
+      <button id="btn_register">Register & Login</button>
+    </div>
+
+    <div class="section">
+      <h2>Login</h2>
+      <input id="login_username" placeholder="username" /> <br />
+      <input id="login_password" type="password" placeholder="password" /> <br />
+      <button id="btn_login">Login</button>
+      <button id="btn_logout">Logout</button>
+    </div>
+
+    <div class="section">
+      <h2>Accounts</h2>
+      <button id="btn_list_accounts">List My Accounts</button>
+      <div id="accounts"></div>
+
+      <h3>Create Account</h3>
+      <input id="acct_name" placeholder="Account name" /> <br />
+      <input id="acct_initial" placeholder="initial cents (e.g. 10000)" /> <br />
+      <button id="btn_create_account">Create</button>
+    </div>
+
+    <div class="section">
+      <h2>Transaction (deposit/withdraw/transfer)</h2>
+      <input id="tx_account_id" placeholder="account id" /> <br />
+      <input id="tx_amount" placeholder="amount cents" /> <br />
+      <button id="btn_deposit">Deposit</button>
+      <button id="btn_withdraw">Withdraw</button>
+
+      <h4>Transfer</h4>
+      <input id="tx_from" placeholder="from account id" /> <br />
+      <input id="tx_to" placeholder="to account id" /> <br />
+      <input id="tx_amount_transfer" placeholder="amount cents" /> <br />
+      <button id="btn_transfer">Transfer</button>
+    </div>
+
+    <h3>Raw Output</h3>
+    <pre id="output"></pre>
+
+    <script>
+      const API = '' // same origin
+
+      function show(msg) {
+        document.getElementById('status').textContent = msg
+      }
+      function out(obj) { document.getElementById('output').textContent = JSON.stringify(obj, null, 2) }
+
+      async function post(path, body) {
+        const res = await fetch(API + path, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          credentials: 'include', body: JSON.stringify(body)
+        })
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok) throw data
+        return data
+      }
+      async function get(path) {
+        const res = await fetch(API + path, { credentials: 'include' })
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok) throw data
+        return data
+      }
+
+      document.getElementById('btn_register').onclick = async ()=>{
+        try{
+          const username = document.getElementById('reg_username').value
+          const password = document.getElementById('reg_password').value
+          const r = await post('/register', { username, password })
+          show('Registered and logged in as ' + r.user.username)
+          out(r)
+        }catch(e){ out(e); show('Error') }
+      }
+
+      document.getElementById('btn_login').onclick = async ()=>{
+        try{
+          const username = document.getElementById('login_username').value
+          const password = document.getElementById('login_password').value
+          const r = await post('/login', { username, password })
+          show('Logged in as ' + r.user.username)
+          out(r)
+        }catch(e){ out(e); show('Login failed') }
+      }
+
+      document.getElementById('btn_logout').onclick = async ()=>{
+        try{ const r = await post('/logout', {}); show('Logged out'); out(r) }catch(e){ out(e) }
+      }
+
+      document.getElementById('btn_list_accounts').onclick = async ()=>{
+        try{ const r = await get('/accounts'); out(r); show('Accounts listed') }catch(e){ out(e); show('Error listing') }
+      }
+
+      document.getElementById('btn_create_account').onclick = async ()=>{
+        try{
+          const name = document.getElementById('acct_name').value
+          const initial = parseInt(document.getElementById('acct_initial').value || '0', 10)
+          const r = await post('/accounts', { name, initial_balance_cents: initial })
+          out(r); show('Account created')
+        }catch(e){ out(e); show('Create failed') }
+      }
+
+      document.getElementById('btn_deposit').onclick = async ()=>{
+        try{
+          const id = parseInt(document.getElementById('tx_account_id').value,10)
+          const amount = parseInt(document.getElementById('tx_amount').value,10)
+          const r = await post(`/accounts/${id}/deposit`, { amount_cents: amount })
+          out(r); show('Deposit OK')
+        }catch(e){ out(e); show('Deposit failed') }
+      }
+
+      document.getElementById('btn_withdraw').onclick = async ()=>{
+        try{
+          const id = parseInt(document.getElementById('tx_account_id').value,10)
+          const amount = parseInt(document.getElementById('tx_amount').value,10)
+          const r = await post(`/accounts/${id}/withdraw`, { amount_cents: amount })
+          out(r); show('Withdraw OK')
+        }catch(e){ out(e); show('Withdraw failed') }
+      }
+
+      document.getElementById('btn_transfer').onclick = async ()=>{
+        try{
+          const from = parseInt(document.getElementById('tx_from').value,10)
+          const to = parseInt(document.getElementById('tx_to').value,10)
+          const amount = parseInt(document.getElementById('tx_amount_transfer').value,10)
+          const r = await post('/accounts/transfer', { from_account_id: from, to_account_id: to, amount_cents: amount })
+          out(r); show('Transfer OK')
+        }catch(e){ out(e); show('Transfer failed') }
+      }
+
+      // show seeded admin info
+      fetch('/health').then(()=>show('Backend reachable')).catch(()=>show('Backend not reachable'))
+    </script>
+  </body>
+</html>
